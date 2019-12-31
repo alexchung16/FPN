@@ -9,6 +9,7 @@
 # @ Time       : 2019/12/31 PM 1:47
 # @ Software   : PyCharm
 #-------------------------------------------------------
+import numpy as np
 import tensorflow as tf
 
 def decode_boxes(encoded_boxes, reference_boxes, scale_factors=None):
