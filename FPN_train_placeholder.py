@@ -111,11 +111,11 @@ def train():
             img_name, image, gtboxes_and_label, num_objects= \
                 sess.run([img_name_batch, img_batch, gtboxes_and_label_batch, num_objects_batch])
             feed_dict = fpn.fill_feed_dict(image_feed=image,
-                                                   gtboxes_feed=gtboxes_and_label)
+                                           gtboxes_feed=gtboxes_and_label)
             training_time = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(time.time()))
 
             if step % cfgs.SHOW_TRAIN_INFO_INTE != 0 and step % cfgs.SMRY_ITER != 0:
-                _, global_stepnp = sess.run(train_op, feed_dict=feed_dict)
+                _, global_stepnp = sess.run([train_op, global_step], feed_dict=feed_dict)
             else:
                 if step % cfgs.SHOW_TRAIN_INFO_INTE == 0 and step % cfgs.SMRY_ITER != 0:
                     start_time = time.time()
