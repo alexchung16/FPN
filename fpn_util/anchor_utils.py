@@ -6,7 +6,7 @@
 # @ Author     : Alex Chung
 # @ Contact    : yonganzhong@outlook.com
 # @ License    : Copyright (c) 2017-2018
-# @ Time       : 2019/12/31 上午11:35
+# @ Time       : 2019/12/31 AM 11:35
 # @ Software   : PyCharm
 #-------------------------------------------------------
 
@@ -15,7 +15,7 @@ import tensorflow as tf
 from FPN.fpn_util import cfgs
 
 
-def make_anchors(base_anchor_size, anchor_scales, anchor_ratios, featuremap_height, featuremap_width,
+def make_anchors(base_anchor_size, anchor_scales, anchor_ratios, feature_height, feature_width,
                  stride, name='make_anchors'):
     '''
     :param base_anchor_size:256
@@ -29,15 +29,11 @@ def make_anchors(base_anchor_size, anchor_scales, anchor_ratios, featuremap_heig
     with tf.variable_scope(name):
         base_anchor = tf.constant([0, 0, base_anchor_size, base_anchor_size], tf.float32)  # [x_center, y_center, w, h]
 
-        ws, hs = enum_ratios(enum_scales(base_anchor, anchor_scales),
-                             anchor_ratios)  # per locations ws and hs
+        ws, hs = enum_ratios(enum_scales(base_anchor, anchor_scales), anchor_ratios)  # per locations ws and hs
 
-        # featuremap_height = tf.Print(featuremap_height,
-        #                              [featuremap_height, featuremap_width], summarize=10,
-        #                              message=name+"_SHAPE***")
 
-        x_centers = tf.range(featuremap_width, dtype=tf.float32) * stride
-        y_centers = tf.range(featuremap_height, dtype=tf.float32) * stride
+        x_centers = tf.range(feature_width, dtype=tf.float32) * stride
+        y_centers = tf.range(feature_height, dtype=tf.float32) * stride
 
         if cfgs.USE_CENTER_OFFSET:
             x_centers = x_centers + stride/2.
@@ -91,8 +87,8 @@ if __name__ == '__main__':
     anchor_ratios = [0.5, 2.0, 1.0]
     anchors = make_anchors(base_anchor_size=base_anchor_size, anchor_ratios=anchor_ratios,
                            anchor_scales=anchor_scales,
-                           featuremap_width=32,
-                           featuremap_height=63,
+                           feature_width=32,
+                           feature_height=63,
                            stride=16)
     init = tf.global_variables_initializer()
     with tf.Session() as sess:
