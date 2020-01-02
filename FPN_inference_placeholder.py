@@ -105,8 +105,8 @@ class ObjectInference():
 
                 # resize boxes and image shape size to raw input image
                 object_boxes = self.bbox_resize(bbox=object_boxes,
-                                                inputs_shape=resized_img.shape[1: 3],
-                                                target_shape=raw_img.shape[1: 3])
+                                                inputs_shape=resized_img.shape[0: 2],
+                                                target_shape=raw_img.shape[0: 2])
 
                 # recover to raw size
                 tmp_detect_dict['score'] = object_scores
