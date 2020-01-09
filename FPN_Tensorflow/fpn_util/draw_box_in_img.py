@@ -13,7 +13,7 @@
 import numpy as np
 import cv2
 from PIL import Image, ImageDraw, ImageFont
-from  FPN.FPN_slim import cfgs
+from  FPN_Tensorflow.FPN_slim import cfgs
 
 
 NAME_LABEL_MAP = cfgs.PASCAL_NAME_LABEL_MAP

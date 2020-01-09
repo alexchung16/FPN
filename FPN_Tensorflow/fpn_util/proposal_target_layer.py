@@ -11,9 +11,9 @@
 #-------------------------------------------------------
 
 import numpy as np
-from FPN.fpn_util import cfgs
-from FPN.fpn_util import encode_and_decode
-from FPN.fpn_util.cython_utils.cython_bbox import bbox_overlaps
+from FPN_Tensorflow.fpn_util import cfgs
+from FPN_Tensorflow.fpn_util import encode_and_decode
+from FPN_Tensorflow.fpn_util.cython_utils.cython_bbox import bbox_overlaps
 
 
 def proposal_target_layer(rpn_rois, gt_boxes):

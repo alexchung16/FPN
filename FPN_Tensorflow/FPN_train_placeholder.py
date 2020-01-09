@@ -15,9 +15,9 @@ import time
 import tensorflow as tf
 import tensorflow.contrib.slim as slim
 
-from Faster_RCNN.faster_rcnn_util import cfgs
+from FPN_Tensorflow.fpn_util import cfgs
+from FPN_Tensorflow import FPN_slim
 from DataProcess.read_coco_pascal_tfrecord import reader_tfrecord
-from FPN import FPN_slim
 
 
 original_dataset_dir = '/home/alex/Documents/datasets/Pascal_VOC_2012/VOCtrainval/VOCdevkit_test'

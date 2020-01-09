@@ -16,9 +16,9 @@ import numpy as np
 import cv2 as cv
 import tensorflow as tf
 
-from FPN.fpn_util import cfgs
-from FPN.fpn_util import draw_box_in_img
-from FPN.FPN_slim import FPN
+from FPN_Tensorflow.fpn_util import cfgs
+from FPN_Tensorflow.fpn_util import draw_box_in_img
+from FPN_Tensorflow.FPN_slim import FPN
 
 
 class ObjectInference():
