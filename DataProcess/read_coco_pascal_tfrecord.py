@@ -26,7 +26,7 @@ _B_MEAN = 103.94
 IMG_SHORT_SIDE_LEN = 600
 IMG_MAX_LENGTH = 1000
 
-def read_parse_single_example(serialized_sample, shortside_len, is_training=False):
+def read_parse_single_example(serialized_sample, shortside_len, length_limitation, is_training=False):
     """
     parse tensor
     :param image_sample:
@@ -60,10 +60,10 @@ def read_parse_single_example(serialized_sample, shortside_len, is_training=Fals
     num_objects = tf.cast(feature['num_objects'], tf.int32)
 
     image, gtboxes_and_label = image_process(image, gtboxes_and_label, shortside_len=shortside_len,
-                                             is_training=is_training)
+                                             length_limitation=length_limitation, is_training=is_training)
     return image, filename, gtboxes_and_label, num_objects
 
-def image_process(image, gtboxes_and_label, shortside_len, is_training=False):
+def image_process(image, gtboxes_and_label, shortside_len, length_limitation, is_training=False):
     """
     image process
     :param image:
@@ -75,14 +75,14 @@ def image_process(image, gtboxes_and_label, shortside_len, is_training=False):
     if is_training:
         img, gtboxes_and_label = short_side_resize(img_tensor=img, gtboxes_and_label=gtboxes_and_label,
                                                                     target_shortside_len=shortside_len,
-                                                                    length_limitation=IMG_MAX_LENGTH)
+                                                                    length_limitation=length_limitation)
         img, gtboxes_and_label = random_flip_left_right(img_tensor=img,
                                                                          gtboxes_and_label=gtboxes_and_label)
 
     else:
         img, gtboxes_and_label = short_side_resize(img_tensor=img, gtboxes_and_label=gtboxes_and_label,
                                                                     target_shortside_len=shortside_len,
-                                                                    length_limitation=IMG_MAX_LENGTH)
+                                                                    length_limitation=length_limitation)
     image = img - tf.constant([_R_MEAN, _G_MEAN, _B_MEAN], dtype=tf.float32)
     # image = image_whitened(img)
     return image, gtboxes_and_label
@@ -154,7 +154,7 @@ def random_flip_left_right(img_tensor, gtboxes_and_label):
     return img_tensor,  gtboxes_and_label
 
 
-def dataset_tfrecord(record_file, shortside_len, batch_size=1, epoch=5, shuffle=True, is_training=False):
+def dataset_tfrecord(record_file, shortside_len, length_limitation, batch_size=1, epoch=5, shuffle=True, is_training=False):
     """
     construct iterator to read image
     :param record_file:
@@ -179,6 +179,7 @@ def dataset_tfrecord(record_file, shortside_len, batch_size=1, epoch=5, shuffle=
     parse_img_dataset = record_dataset.map(lambda series_record:
                                             read_parse_single_example(serialized_sample = series_record,
                                                                       shortside_len=shortside_len,
+                                                                      length_limitation=length_limitation,
                                                                       is_training=is_training))
     # get dataset batch
     if shuffle:
@@ -191,7 +192,8 @@ def dataset_tfrecord(record_file, shortside_len, batch_size=1, epoch=5, shuffle=
     return image, filename, gtboxes_and_label, num_objects
 
 
-def reader_tfrecord(record_file, shortside_len, batch_size=1, num_threads=2, epoch=5, shuffle=True, is_training=False):
+def reader_tfrecord(record_file, shortside_len, length_limitation, batch_size=1, num_threads=2, epoch=5, shuffle=True,
+                    is_training=False):
     """
     read and sparse TFRecord
     :param record_file:
@@ -215,6 +217,7 @@ def reader_tfrecord(record_file, shortside_len, batch_size=1, num_threads=2, epo
     # image, label, filename = read_parse_single_example(serialized_sample, input_shape=input_shape, class_depth=class_depth)
     image, filename, gtboxes_and_label, num_objects = read_parse_single_example(serialized_sample,
                                                                                 shortside_len=shortside_len,
+                                                                                length_limitation=length_limitation,
                                                                                 is_training=is_training)
 
     image, filename, gtboxes_and_label, num_objects = tf.train.batch([image, filename, gtboxes_and_label, num_objects],
@@ -234,8 +237,9 @@ if __name__ == "__main__":
     #                                                                   shortside_len=IMG_SHORT_SIDE_LEN,
     #                                                                   is_training=True)
     image, filename, gtboxes_and_label, num_objects = dataset_tfrecord(record_file=tfrecord_dir,
-                                                                      shortside_len=IMG_SHORT_SIDE_LEN,
-                                                                      is_training=True)
+                                                                       shortside_len=IMG_SHORT_SIDE_LEN,
+                                                                       length_limitation=IMG_MAX_LENGTH,
+                                                                       is_training=True)
     init_op = tf.group(
         tf.global_variables_initializer(),
         tf.local_variables_initializer()
