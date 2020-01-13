@@ -627,7 +627,7 @@ class FPN():
         if is_pretrain:
             # just restore weight of base net(resnet_50, resnet_v1_101) and rpn_net
             if restore_from_rpn:
-                restore_variables= [var for var in model_variables if not var.name.startwith('Fast-RCNN')]
+                restore_variables= [var for var in model_variables if not var.name.startswith('Fast-RCNN')]
                 for var in restore_variables:
                     print(var.name)
                 restorer = tf.compat.v1.train.Saver(restore_variables)
