@@ -9,14 +9,13 @@
 import os
 import numpy as np
 import tensorflow as tf
-import cv2 as cv
+
 import matplotlib.pyplot as plt
-import tensorflow.contrib.slim as slim
-from tensorflow.python_io import tf_record_iterator
+
 
 
 # origin_dataset_dir = 'F:\datasets\Pascal VOC 2012\VOCdevkit\VOC2012'
-origin_dataset_dir = '/home/alex/Documents/datasets/Pascal_VOC_2012/VOCtrainval/VOCdevkit_test'
+origin_dataset_dir = '/media/alex/AC6A2BDB6A2BA0D6/alex_dataset/pascal_split/val'
 tfrecord_dir = os.path.join(origin_dataset_dir, 'tfrecords')
 
 _R_MEAN = 123.68
@@ -231,12 +230,11 @@ def reader_tfrecord(record_file, shortside_len, length_limitation, batch_size=1,
 
 if __name__ == "__main__":
 
-    record_file = os.path.join(tfrecord_dir, 'train.tfrecord')
     # create local and global variables initializer group
     # image, filename, gtboxes_and_label, num_objects = reader_tfrecord(record_file=tfrecord_dir,
     #                                                                   shortside_len=IMG_SHORT_SIDE_LEN,
     #                                                                   is_training=True)
-    image, filename, gtboxes_and_label, num_objects = dataset_tfrecord(record_file=tfrecord_dir,
+    image_batch, filename_batch, gtboxes_and_label_batch, num_objects_batch = dataset_tfrecord(record_file=tfrecord_dir,
                                                                        shortside_len=IMG_SHORT_SIDE_LEN,
                                                                        length_limitation=IMG_MAX_LENGTH,
                                                                        is_training=True)
@@ -253,13 +251,11 @@ if __name__ == "__main__":
         threads = tf.train.start_queue_runners(coord=coord)
         try:
             if not coord.should_stop():
-                image_feed, filename_feed, gtboxes_and_label = sess.run([image, filename, gtboxes_and_label])
-                # print(len(image_batch.eval()))
-                # print(label_batch.eval())
-                print(image_feed[0])
-                plt.imshow(image_feed[0])
-                plt.show()
-                print(filename_feed)
+                image, filename, gtboxes_and_label = sess.run([ image_batch, filename_batch, gtboxes_and_label_batch])
+
+                plt.imshow(image[0])
+                print(filename[0])
+                print(gtboxes_and_label[0])
         except Exception as e:
             print(e)
         finally:
