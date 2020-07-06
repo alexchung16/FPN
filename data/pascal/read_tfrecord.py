@@ -9,12 +9,9 @@
 import os
 import numpy as np
 import tensorflow as tf
-
 import matplotlib.pyplot as plt
 
 
-
-# origin_dataset_dir = 'F:\datasets\Pascal VOC 2012\VOCdevkit\VOC2012'
 origin_dataset_dir = '/media/alex/AC6A2BDB6A2BA0D6/alex_dataset/pascal_split/val'
 tfrecord_dir = os.path.join(origin_dataset_dir, 'tfrecords')
 
@@ -24,6 +21,7 @@ _B_MEAN = 103.94
 
 IMG_SHORT_SIDE_LEN = 600
 IMG_MAX_LENGTH = 1000
+
 
 def read_parse_single_example(serialized_sample, shortside_len, length_limitation, is_training=False):
     """
@@ -62,6 +60,7 @@ def read_parse_single_example(serialized_sample, shortside_len, length_limitatio
                                              length_limitation=length_limitation, is_training=is_training)
     return image, filename, gtboxes_and_label, num_objects
 
+
 def image_process(image, gtboxes_and_label, shortside_len, length_limitation, is_training=False):
     """
     image process
@@ -86,6 +85,7 @@ def image_process(image, gtboxes_and_label, shortside_len, length_limitation, is
     # image = image_whitened(img)
     return image, gtboxes_and_label
 
+
 def image_whitened(image, means=(_R_MEAN, _G_MEAN, _B_MEAN)):
     """Subtracts the given means from each image channel.
     Returns:
@@ -102,10 +102,12 @@ def image_whitened(image, means=(_R_MEAN, _G_MEAN, _B_MEAN)):
     image = image - mean
     return image
 
+
 def max_length_limitation(length, length_limitation):
     return tf.cond(tf.less(length, length_limitation),
                    true_fn=lambda: length,
                    false_fn=lambda: length_limitation)
+
 
 def short_side_resize(img_tensor, gtboxes_and_label, target_shortside_len, length_limitation=1200):
     '''
@@ -227,6 +229,7 @@ def reader_tfrecord(record_file, shortside_len, length_limitation, batch_size=1,
                                             )
     # dataset = tf.data.Dataset.shuffle(buffer_size=batch_size*4)
     return image, filename, gtboxes_and_label, num_objects
+
 
 if __name__ == "__main__":
 

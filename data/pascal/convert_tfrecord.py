@@ -13,11 +13,11 @@ import xml.etree.cElementTree as ET
 import cv2 as cv
 
 from utils.tools import makedir, view_bar
-# original_dataset_dir = 'F:/datasets/Pascal VOC 2012/VOCdevkit/VOC2012'
 
-# original_dataset_dir = '/media/alex/AC6A2BDB6A2BA0D6/alex_dataset/Pascal_VOC_2012/VOCtrainval/VOCdevkit/VOC2012'
-original_dataset_dir = '/media/alex/AC6A2BDB6A2BA0D6/alex_dataset/pascal_split/val'
-tfrecord_dir = os.path.join(original_dataset_dir, 'tfrecord')
+original_dataset_dir = '/media/alex/AC6A2BDB6A2BA0D6/alex_dataset/Pascal_VOC_2012/VOCtrainval/VOCdevkit/VOC2012'
+
+tfrecord_dir = '/media/alex/AC6A2BDB6A2BA0D6/alex_dataset/pascal_tfrecord'
+# tfrecord_dir = os.path.join(original_dataset_dir, 'tfrecords')
 
 
 NAME_LABEL_MAP = {
@@ -53,7 +53,6 @@ tf.app.flags.DEFINE_string('save_dir', tfrecord_dir, 'save name')
 tf.app.flags.DEFINE_string('img_format', '.jpg', 'format of image')
 tf.app.flags.DEFINE_string('dataset', 'car', 'dataset')
 FLAGS = tf.app.flags.FLAGS
-
 
 
 try:
@@ -208,7 +207,7 @@ if __name__ == "__main__":
     image_path = os.path.join(FLAGS.dataset_dir, FLAGS.image_dir)
     xml_path = os.path.join(FLAGS.dataset_dir, FLAGS.xml_dir)
 
-    convert_pascal_to_tfrecord(img_path=image_path, xml_path=xml_path, save_path=FLAGS.save_dir)
+    convert_pascal_to_tfrecord(img_path=image_path, xml_path=xml_path, save_path=FLAGS.save_dir, record_capacity=4000)
 
 
 
