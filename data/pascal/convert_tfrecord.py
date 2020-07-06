@@ -12,10 +12,13 @@ import tensorflow  as tf
 import xml.etree.cElementTree as ET
 import cv2 as cv
 
+from utils.tools import makedir, view_bar
 # original_dataset_dir = 'F:/datasets/Pascal VOC 2012/VOCdevkit/VOC2012'
 
-original_dataset_dir = '/home/alex/Documents/datasets/Pascal_VOC_2012/VOCtrainval/VOCdevkit_test'
-tfrecord_dir = os.path.join(original_dataset_dir, 'tfrecords')
+# original_dataset_dir = '/media/alex/AC6A2BDB6A2BA0D6/alex_dataset/Pascal_VOC_2012/VOCtrainval/VOCdevkit/VOC2012'
+original_dataset_dir = '/media/alex/AC6A2BDB6A2BA0D6/alex_dataset/pascal_split/val'
+tfrecord_dir = os.path.join(original_dataset_dir, 'tfrecord')
+
 
 NAME_LABEL_MAP = {
         'back_ground': 0,
@@ -51,24 +54,15 @@ tf.app.flags.DEFINE_string('img_format', '.jpg', 'format of image')
 tf.app.flags.DEFINE_string('dataset', 'car', 'dataset')
 FLAGS = tf.app.flags.FLAGS
 
-def makedir(path):
-    """
-    create dir
-    :param path:
-    :return:
-    """
-    if os.path.exists(path) is False:
-        os.makedirs(path)
+
 
 try:
     if os.path.exists(original_dataset_dir) is False:
-        print('dataset is not exist please check the path')
-    else:
-        if os.path.exists(tfrecord_dir) is False:
-            os.mkdir(tfrecord_dir)
-            print('{0} has been created'.format(tfrecord_dir))
+        raise IOError('dataset is not exist please check the path')
 except FileNotFoundError as e:
     print(e)
+finally:
+    makedir(tfrecord_dir)
 
 def _int64_feature(value):
     return tf.train.Feature(int64_list=tf.train.Int64List(value=[value]))
@@ -106,6 +100,7 @@ def read_xml_gtbox_and_label(xml_path):
                     label=NAME_LABEL_MAP[child_item.text]
                 if child_item.tag == 'bndbox':
                     tmp_box = []
+                    xmin, ymin, xmax, ymax = None, None, None, None
                     for node in child_item:
                         if node.tag == 'xmin':
                             xmin = int(eval(node.text))
@@ -130,35 +125,59 @@ def read_xml_gtbox_and_label(xml_path):
     return img_height, img_width, gtbox_label
 
 
-def convert_pascal_to_tfrecord(image_path, xml_path, save_path):
+def convert_pascal_to_tfrecord(img_path, xml_path, save_path, record_capacity=2000):
     """
     convert pascal dataset to rfrecord
-    :param img_dir:
-    :param annotation_dir:
-    :return: None
+    :param img_path:
+    :param xml_path:
+    :param save_path:
+    :param record_capacity:
+    :return:
     """
     # record_file = os.path.join(FLAGS.save_dir, FLAGS.save_name+'.tfrecord')
-    write = tf.io.TFRecordWriter(save_path)
 
-    for n, xml in enumerate(glob.glob(os.path.join(xml_path, '*.xml'))):
-        img_name = os.path.basename(xml).split('.')[0] + FLAGS.img_format
-        img_path = os.path.join(image_path, img_name)
-        if not os.path.exists(img_path):
-            print('{} is not exist!'.format(img_path))
+    img_xml_list = [os.path.basename(xml_file) for xml_file in glob.glob(os.path.join(xml_path, '*.xml'))]
+    img_name_list = [xml.split('.')[0] + FLAGS.img_format for xml in img_xml_list]
+
+    remainder_num = len(img_name_list) % record_capacity
+    if remainder_num == 0:
+        num_record = int(len(img_name_list) / record_capacity)
+    else:
+        num_record = int(len(img_name_list) / record_capacity) + 1
+
+    num_samples = 0
+    for index in range(num_record):
+        record_filename = os.path.join(save_path, f'{index}.record')
+        write = tf.io.TFRecordWriter(record_filename)
+        if index < num_record - 1:
+            sub_img_list = img_name_list[index * record_capacity: (index + 1) * record_capacity]
+            sub_xml_list = img_xml_list[index * record_capacity: (index + 1) * record_capacity]
+        else:
+            sub_img_list = img_name_list[(index * record_capacity): (index * record_capacity + remainder_num)]
+            sub_xml_list = img_xml_list[(index * record_capacity): (index * record_capacity + remainder_num)]
+
+        try:
+            for img_name, img_xml in zip(sub_img_list, sub_xml_list):
+                img_file = os.path.join(img_path, img_name)
+                xml_file = os.path.join(xml_path, img_xml)
+
+                img_height, img_width, gtbox_label = read_xml_gtbox_and_label(xml_file)
+                # note image channel format of opencv if rgb
+                bgr_image = cv.imread(img_file)
+                # BGR TO RGB
+                rgb_image = cv.cvtColor(bgr_image, cv.COLOR_BGR2RGB)
+
+                image_record = serialize_example(image=rgb_image, img_height=img_height, img_width=img_width, img_depth=3,
+                                                 filename=img_name, gtbox_label=gtbox_label)
+                write.write(record=image_record)
+
+                num_samples += 1
+                view_bar(message='\nConversion progress', num=num_samples, total=len(img_name_list))
+        except Exception as e:
+            print(e)
             continue
-
-        img_height, img_width, gtbox_label = read_xml_gtbox_and_label(xml)
-        # note image channel format of opencv if rgb
-        bgr_image = cv.imread(img_path)
-        # BGR TO RGB
-        rgb_image = cv. cvtColor(bgr_image, cv.COLOR_BGR2RGB)
-
-
-        image_record = serialize_example(image=rgb_image, img_height=img_height, img_width=img_width, img_depth=3,
-                                         filename=img_name, gtbox_label=gtbox_label)
-        write.write(record=image_record)
-    write.close()
-    print('Conversion is complete!')
+        write.close()
+    print('\nThere are {0} samples convert to {1}'.format(num_samples, save_path))
 
 
 def serialize_example(image, img_height, img_width, img_depth, filename, gtbox_label):
@@ -188,9 +207,8 @@ def serialize_example(image, img_height, img_width, img_depth, filename, gtbox_l
 if __name__ == "__main__":
     image_path = os.path.join(FLAGS.dataset_dir, FLAGS.image_dir)
     xml_path = os.path.join(FLAGS.dataset_dir, FLAGS.xml_dir)
-    save_path = os.path.join(FLAGS.save_dir, FLAGS.save_name + '.tfrecord')
 
-    convert_pascal_to_tfrecord(image_path=image_path, xml_path=xml_path, save_path=save_path)
+    convert_pascal_to_tfrecord(img_path=image_path, xml_path=xml_path, save_path=FLAGS.save_dir)
 
 
 
