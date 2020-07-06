@@ -7,13 +7,14 @@
 
 
 import os
-import numpy as np
+import glob
 import tensorflow as tf
 import matplotlib.pyplot as plt
+from tensorflow.python_io import tf_record_iterator
 
 
-origin_dataset_dir = '/media/alex/AC6A2BDB6A2BA0D6/alex_dataset/pascal_split/val'
-tfrecord_dir = os.path.join(origin_dataset_dir, 'tfrecords')
+# origin_dataset_dir = '/media/alex/AC6A2BDB6A2BA0D6/alex_dataset/pascal_split/val'
+tfrecord_dir = '/media/alex/AC6A2BDB6A2BA0D6/alex_dataset/pascal_tfrecord'
 
 _R_MEAN = 123.68
 _G_MEAN = 116.78
@@ -231,8 +232,29 @@ def reader_tfrecord(record_file, shortside_len, length_limitation, batch_size=1,
     return image, filename, gtboxes_and_label, num_objects
 
 
+def get_num_samples(record_dir):
+    """
+    get tfrecord numbers
+    :param record_file:
+    :return:
+    """
+
+
+    # check record file format
+
+    record_list = glob.glob(os.path.join(record_dir, '*.record'))
+
+
+    num_samples = 0
+    for record_file in record_list:
+        for record in tf_record_iterator(record_file):
+            num_samples += 1
+    return num_samples
+
+
 if __name__ == "__main__":
 
+    print('number samples: {0}'.format(get_num_samples(tfrecord_dir)))
     # create local and global variables initializer group
     # image, filename, gtboxes_and_label, num_objects = reader_tfrecord(record_file=tfrecord_dir,
     #                                                                   shortside_len=IMG_SHORT_SIDE_LEN,
@@ -259,6 +281,7 @@ if __name__ == "__main__":
                 plt.imshow(image[0])
                 print(filename[0])
                 print(gtboxes_and_label[0])
+                plt.show()
         except Exception as e:
             print(e)
         finally:
