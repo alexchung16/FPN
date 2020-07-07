@@ -140,8 +140,9 @@ def read_json_gtbox_label(img_anns):
    for annotation in img_anns:
       bbox = annotation['bbox']
 
+      # the format of coco bounding boxs is [xmin, ymin, width, height]
       x, y, w, h = float(bbox[0]), float(bbox[1]), float(bbox[2]), float(bbox[3])
-      # (x,y, w, h) -> (x_min, y_min, x_max, y_max)
+      # (x, y, w, h) -> (x_min, y_min, x_max, y_max)
       x_min, y_min, x_max, y_max = int(np.rint(x)), int(np.rint(y)), int(np.rint(x + w)), int(np.rint(y + h))
       label = annotation['category_id']
       gt_bbox = [x_min, y_min, x_max, y_max]
