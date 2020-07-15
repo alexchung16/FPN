@@ -14,7 +14,7 @@ from tensorflow.python_io import tf_record_iterator
 
 
 # origin_dataset_dir = '/media/alex/AC6A2BDB6A2BA0D6/alex_dataset/pascal_split/val'
-tfrecord_dir = '/media/alex/AC6A2BDB6A2BA0D6/alex_dataset/pascal_tfrecord'
+tfrecord_dir = '/media/alex/AC6A2BDB6A2BA0D6/alex_dataset/coco_tfrecord'
 
 _R_MEAN = 123.68
 _G_MEAN = 116.78
@@ -191,7 +191,7 @@ def dataset_tfrecord(record_file, shortside_len, length_limitation, batch_size=1
     # make dataset iterator
     image, filename, gtboxes_and_label, num_objects = shuffle_batch_dataset.make_one_shot_iterator().get_next()
 
-    return image, filename, gtboxes_and_label, num_objects
+    return filename, image, gtboxes_and_label, num_objects
 
 
 def reader_tfrecord(record_file, shortside_len, length_limitation, batch_size=1, num_threads=2, epoch=5, shuffle=True,
@@ -229,7 +229,7 @@ def reader_tfrecord(record_file, shortside_len, length_limitation, batch_size=1,
                                             dynamic_pad=True
                                             )
     # dataset = tf.data.Dataset.shuffle(buffer_size=batch_size*4)
-    return image, filename, gtboxes_and_label, num_objects
+    return filename, image, gtboxes_and_label, num_objects
 
 
 def get_num_samples(record_dir):
@@ -238,12 +238,8 @@ def get_num_samples(record_dir):
     :param record_file:
     :return:
     """
-
-
     # check record file format
-
     record_list = glob.glob(os.path.join(record_dir, '*.record'))
-
 
     num_samples = 0
     for record_file in record_list:
@@ -259,7 +255,7 @@ if __name__ == "__main__":
     # image, filename, gtboxes_and_label, num_objects = reader_tfrecord(record_file=tfrecord_dir,
     #                                                                   shortside_len=IMG_SHORT_SIDE_LEN,
     #                                                                   is_training=True)
-    image_batch, filename_batch, gtboxes_and_label_batch, num_objects_batch = dataset_tfrecord(record_file=tfrecord_dir,
+    filename_batch, image_batch, gtboxes_and_label_batch, num_objects_batch = dataset_tfrecord(record_file=tfrecord_dir,
                                                                        shortside_len=IMG_SHORT_SIDE_LEN,
                                                                        length_limitation=IMG_MAX_LENGTH,
                                                                        is_training=True)
@@ -276,7 +272,7 @@ if __name__ == "__main__":
         threads = tf.train.start_queue_runners(coord=coord)
         try:
             if not coord.should_stop():
-                image, filename, gtboxes_and_label = sess.run([ image_batch, filename_batch, gtboxes_and_label_batch])
+                filename, image, gtboxes_and_label = sess.run([filename_batch, image_batch, gtboxes_and_label_batch])
 
                 plt.imshow(image[0])
                 print(filename[0])

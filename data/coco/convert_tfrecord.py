@@ -38,6 +38,8 @@ def convert_coco_to_tfrecord(src_path, save_path, record_capacity=2000, raw_coco
 
    :param src_path:
    :param save_path:
+   :param record_capacity:
+   :param raw_coco:
    :return:
    """
 
