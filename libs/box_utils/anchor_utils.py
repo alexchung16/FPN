@@ -12,7 +12,7 @@
 
 import tensorflow as tf
 
-from FPN_Tensorflow.fpn_util import cfgs
+from libs.configs import cfgs
 
 
 def make_anchors(base_anchor_size, anchor_scales, anchor_ratios, feature_height, feature_width,

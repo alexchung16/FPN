@@ -12,11 +12,11 @@
 
 import tensorflow as tf
 import tensorflow.contrib.slim as slim
-from FPN.fpn_util import cfgs
+from libs.configs import cfgs
 from tensorflow.contrib.slim.nets import resnet_v1
 from tensorflow.contrib.slim.nets import resnet_utils
 from tensorflow.contrib.slim.python.slim.nets.resnet_v1 import resnet_v1_block
-import tfplot as tfp
+
 
 class ResNet():
     def __init__(self, weight_decay=0.0001, batch_norm_decay=0.997, batch_norm_epsilon=1e-5,

@@ -15,14 +15,14 @@ import numpy as np
 import tensorflow as tf
 import tensorflow.contrib.slim as slim
 
-from FPN_Tensorflow.fpn_util import cfgs
-from FPN_Tensorflow.fpn_util.resnet_util import ResNet
-from FPN_Tensorflow.fpn_util import anchor_utils
-from FPN_Tensorflow.fpn_util import boxes_utils
-from FPN_Tensorflow.fpn_util import encode_and_decode
-from FPN_Tensorflow.fpn_util.anchor_target_layer import anchor_target_layer
-from FPN_Tensorflow.fpn_util.proposal_target_layer import proposal_target_layer
-from FPN_Tensorflow.fpn_util import losses
+from libs.configs import cfgs
+from libs.networks.resnet_util import ResNet
+from libs.box_utils import anchor_utils
+from libs.box_utils import boxes_utils
+from libs.box_utils import encode_and_decode
+from libs.detect_operations.anchor_target_layer import anchor_target_layer
+from libs.detect_operations.proposal_target_layer import proposal_target_layer
+from libs.losses import losses
 
 class FPN():
     """

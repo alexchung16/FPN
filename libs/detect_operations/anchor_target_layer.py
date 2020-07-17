@@ -10,11 +10,11 @@
 # @ Software   : PyCharm
 #-------------------------------------------------------
 
-from FPN_Tensorflow.fpn_util import cfgs
+from libs.configs import cfgs
 import numpy as np
 import numpy.random as npr
-from FPN_Tensorflow.fpn_util.cython_utils.cython_bbox import bbox_overlaps
-from FPN_Tensorflow.fpn_util import encode_and_decode
+from libs.box_utils.cython_utils.cython_bbox import bbox_overlaps
+from libs.box_utils import encode_and_decode
 
 
 def anchor_target_layer(gt_boxes, img_shape, all_anchors, is_restrict_bg=False):

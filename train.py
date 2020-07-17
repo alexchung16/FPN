@@ -15,9 +15,9 @@ import time
 import tensorflow as tf
 import tensorflow.contrib.slim as slim
 
-from FPN_Tensorflow.fpn_util import cfgs
-from FPN_Tensorflow import FPN_slim
-from DataProcess.read_coco_pascal_tfrecord import reader_tfrecord
+from libs.configs import cfgs
+from libs.networks import models
+from data.pascal.read_tfrecord import dataset_tfrecord
 
 
 original_dataset_dir = '/home/alex/Documents/datasets/Pascal_VOC_2012/VOCtrainval/VOCdevkit_test'
@@ -60,11 +60,11 @@ def train():
     train progress
     :return:
     """
-    fpn = FPN_slim.FPN(base_network_name='resnet_v1_101', is_training=True)
+    fpn = models.FPN(base_network_name='resnet_v1_101', is_training=True)
     #-----------------------------------------------read data----------------------------------------------------------
     with tf.name_scope('get_batch'):
         img_name_batch, img_batch, gtboxes_and_label_batch, num_objects_batch = \
-            reader_tfrecord(batch_size=cfgs.BATCH_SIZE,
+            dataset_tfrecord(batch_size=cfgs.BATCH_SIZE,
                             shortside_len=cfgs.IMG_SHORT_SIDE_LEN,
                             length_limitation=cfgs.IMG_MAX_LENGTH,
                             record_file=FLAGS.record_file,
