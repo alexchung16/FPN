@@ -20,9 +20,11 @@ from libs.networks.resnet_util import ResNet
 from libs.box_utils import anchor_utils
 from libs.box_utils import boxes_utils
 from libs.box_utils import encode_and_decode
+from libs.box_utils import show_box_in_tensor
 from libs.detect_operations.anchor_target_layer import anchor_target_layer
 from libs.detect_operations.proposal_target_layer import proposal_target_layer
 from libs.losses import losses
+
 
 class FPN():
     """
@@ -42,21 +44,15 @@ class FPN():
                              batch_norm_epsilon=batch_norm_epsilon,
                              batch_norm_scale=batch_norm_scale)
         self.is_training = is_training
+        # # is_training flag
+        self.global_step = tf.train.get_or_create_global_step()
+
         self.raw_input_data = tf.compat.v1.placeholder(dtype=tf.float32, shape=[None, None, None, 3],
                                                        name="input_images")
         # y [None, upper_left_x, upper_left_y, down_right_x, down_right_y]
-        if self.is_training:
-            self.raw_input_gtboxes = tf.compat.v1.placeholder(dtype=tf.float32, shape=[None, None, 5],
-                                                              name="gtboxes_label")
-        else:
-            self.raw_input_gtboxes = None
-        # # is_training flag
-        self.global_step = tf.train.get_or_create_global_step()
-        self.inference = self.inference()
-        if self.is_training:
-            self.loss = self.losses()
-            self.train = self.training(self.loss, self.global_step)
 
+        self.raw_input_gtboxes = tf.compat.v1.placeholder(dtype=tf.float32, shape=[None, None, 5],
+                                                          name="gtboxes_label")
     def inference(self):
         """
         inference function
@@ -67,29 +63,11 @@ class FPN():
             with slim.arg_scope(self.fpn_arg_scope()):
                 final_bbox, final_scores, final_category = self.fpn(img_batch=self.raw_input_data,
                                                                             gtboxes_batch=self.raw_input_gtboxes)
+                self.losses()
         else:
             final_bbox, final_scores, final_category = self.fpn(img_batch=self.raw_input_data,
                                                                         gtboxes_batch=self.raw_input_gtboxes)
         return final_bbox, final_scores, final_category
-
-    def fill_feed_dict(self, image_feed, gtboxes_feed=None):
-        """
-        generate feed dict
-        :param image_feed:
-        :param gtboxes_feed:
-        :param is_training:
-        :return:
-        """
-        if self.is_training:
-            feed_dict = {
-                self.raw_input_data: image_feed,
-                self.raw_input_gtboxes: gtboxes_feed
-            }
-        else:
-            feed_dict = {
-                self.raw_input_data: image_feed
-            }
-        return feed_dict
 
     def build_base_network(self, inputs_batch):
         """
@@ -541,6 +519,7 @@ class FPN():
                 fpn_bbox_targets = tf.reshape(fpn_bbox_targets, [-1, 4])
                 fpn_labels = tf.to_int32(fpn_labels, name='to_int32')
                 fpn_labels = tf.reshape(fpn_labels, [-1])
+                self.add_anchor_img_smry(img_batch, all_anchors, fpn_labels)
 
             #------------------------------------------add summary-----------------------------------------------------
             fpn_cls_category = tf.argmax(fpn_cls_prob, axis=1)
@@ -559,6 +538,7 @@ class FPN():
                     labels = tf.to_int32(labels)
                     labels = tf.reshape(labels, [-1])
                     bbox_targets = tf.reshape(bbox_targets, [-1, 4 * (cfgs.CLASS_NUM + 1)])
+                    self.add_roi_batch_img_smry(img_batch, rois, labels)
 
         if self.is_training:
             rois_list, labels, bbox_targets = self.assign_levels(all_rois=rois,
@@ -610,6 +590,56 @@ class FPN():
                                                                                  img_shape=img_shape)
             return final_bbox, final_scores, final_category
 
+    def add_anchor_img_smry(self, img, anchors, labels):
+
+        positive_anchor_indices = tf.reshape(tf.where(tf.greater_equal(labels, 1)), [-1])
+        negative_anchor_indices = tf.reshape(tf.where(tf.equal(labels, 0)), [-1])
+
+        positive_anchor = tf.gather(anchors, positive_anchor_indices)
+        negative_anchor = tf.gather(anchors, negative_anchor_indices)
+
+        pos_in_img = show_box_in_tensor.only_draw_boxes(img_batch=img,
+                                                        boxes=positive_anchor)
+        neg_in_img = show_box_in_tensor.only_draw_boxes(img_batch=img,
+                                                        boxes=negative_anchor)
+
+        tf.summary.image('positive_anchor', pos_in_img)
+        tf.summary.image('negative_anchors', neg_in_img)
+
+    def add_roi_batch_img_smry(self, img, rois, labels):
+        positive_roi_indices = tf.reshape(tf.where(tf.greater_equal(labels, 1)), [-1])
+
+        negative_roi_indices = tf.reshape(tf.where(tf.equal(labels, 0)), [-1])
+
+        pos_roi = tf.gather(rois, positive_roi_indices)
+        neg_roi = tf.gather(rois, negative_roi_indices)
+
+
+        pos_in_img = show_box_in_tensor.only_draw_boxes(img_batch=img,
+                                                               boxes=pos_roi)
+        neg_in_img = show_box_in_tensor.only_draw_boxes(img_batch=img,
+                                                               boxes=neg_roi)
+        tf.summary.image('pos_rois', pos_in_img)
+        tf.summary.image('neg_rois', neg_in_img)
+
+    def fill_feed_dict(self, image_feed, gtboxes_feed=None):
+        """
+        generate feed dict
+        :param image_feed:
+        :param gtboxes_feed:
+        :param is_training:
+        :return:
+        """
+        if self.is_training:
+            feed_dict = {
+                self.raw_input_data: image_feed,
+                self.raw_input_gtboxes: gtboxes_feed
+            }
+        else:
+            feed_dict = {
+                self.raw_input_data: image_feed
+            }
+        return feed_dict
 
     def get_restore(self, pretrain_model_dir, restore_from_rpn=True, is_pretrain=False):
         """
@@ -618,9 +648,6 @@ class FPN():
         :param is_pretrain:
         :return:
         """
-        fpn_dir = os.path.join(pretrain_model_dir, 'fpn')
-
-        base_net_dir = os.path.join(pretrain_model_dir, self.base_network_name)
 
         model_variables = slim.get_model_variables()
         # restore weight from faster rcnn pretrain model
@@ -634,7 +661,7 @@ class FPN():
             # restore all variables weight
             else:
                 restorer = tf.train.Saver()
-            checkpoint_path = tf.compat.v1.train.latest_checkpoint(fpn_dir)
+            checkpoint_path = tf.compat.v1.train.latest_checkpoint(pretrain_model_dir)
 
         # restore variable weight only from base_net(resnet_v1_50, resnet_v1_101) pretrain model
         else:
@@ -649,7 +676,7 @@ class FPN():
                 print("var_in_ckpt: ", key)
 
             restorer = tf.compat.v1.train.Saver(restore_variables)
-            checkpoint_path = os.path.join(base_net_dir, self.base_network_name + '.ckpt')
+            checkpoint_path = os.path.join(pretrain_model_dir, self.base_network_name + '.ckpt')
             print("restore from pretrained_weighs in IMAGE_NET")
 
         return restorer, checkpoint_path
