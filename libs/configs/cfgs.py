@@ -22,7 +22,7 @@ NET_NAME = 'resnet_v1_101'
 ADD_BOX_IN_TENSORBOARD = True
 
 # ---------------------------------------- System_config
-ROOT_PATH = os.path.abspath('../')
+ROOT_PATH = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 print (20*"++--")
 print (ROOT_PATH)
 GPU_GROUP = "4"
@@ -30,10 +30,12 @@ SHOW_TRAIN_INFO_INTE = 10
 SMRY_ITER = 100
 SAVE_WEIGHTS_INTE = 10000
 
-SUMMARY_PATH = ROOT_PATH + '/output/summary'
-TEST_SAVE_PATH = ROOT_PATH + '/tools/test_result'
-INFERENCE_IMAGE_PATH = ROOT_PATH + '/tools/inference_image'
-INFERENCE_SAVE_PATH = ROOT_PATH + '/tools/inference_results'
+TFRECORD_DIR = '/media/alex/AC6A2BDB6A2BA0D6/alex_dataset/pascal_tfrecord'
+SUMMARY_PATH = ROOT_PATH + '/outputs/summary'
+INFERENCE_SAVE_PATH = ROOT_PATH + '/outputs/inference_results'
+TEST_SAVE_PATH = ROOT_PATH + '/outputs/test_results'
+INFERENCE_IMAGE_PATH = ROOT_PATH + '/outputs/inference_image'
+# INFERENCE_SAVE_PATH = ROOT_PATH + '/tools/inference_results'
 
 if NET_NAME.startswith("resnet"):
     weights_name = NET_NAME
@@ -42,11 +44,13 @@ elif NET_NAME.startswith("MobilenetV2"):
 else:
     raise NotImplementedError
 
-PRETRAINED_CKPT = ROOT_PATH + '/data/pretrained_weights/' + weights_name + '.ckpt'
-TRAINED_CKPT = os.path.join(ROOT_PATH, 'output/trained_weights')
-
-EVALUATE_DIR = ROOT_PATH + '/output/evaluate_result_pickle/'
-test_annotate_path = '/home/yjr/DataSet/VOC/VOC_test/VOC2007/Annotations'
+PRETRAINED_CKPT = ROOT_PATH + '/data/pretrained_weights'
+MODEL_CKPT = os.path.join(ROOT_PATH, 'outputs/model_weights')
+EVALUATE_DIR = ROOT_PATH + '/outputs/evaluate_result'
+# PRETRAINED_CKPT = ROOT_PATH + '/data/pretrained_weights/' + weights_name + '.ckpt'
+# TRAINED_CKPT = os.path.join(ROOT_PATH, 'output/trained_weights')
+# EVALUATE_DIR = ROOT_PATH + '/output/evaluate_result_pickle/'
+# test_annotate_path = '/home/yjr/DataSet/VOC/VOC_test/VOC2007/Annotations'
 
 # ------------------------------------------ Train config
 RESTORE_FROM_RPN = False

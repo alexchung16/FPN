@@ -641,7 +641,7 @@ class FPN():
             }
         return feed_dict
 
-    def get_restore(self, pretrain_model_dir, restore_from_rpn=True, is_pretrain=False):
+    def get_restore(self, pretrained_model_dir, restore_from_rpn=True, is_pretrain=False):
         """
         restore pretrain weight
         :param pretrain_model_dir:
@@ -661,7 +661,7 @@ class FPN():
             # restore all variables weight
             else:
                 restorer = tf.train.Saver()
-            checkpoint_path = tf.compat.v1.train.latest_checkpoint(pretrain_model_dir)
+            checkpoint_path = tf.compat.v1.train.latest_checkpoint(pretrained_model_dir)
 
         # restore variable weight only from base_net(resnet_v1_50, resnet_v1_101) pretrain model
         else:
@@ -676,7 +676,7 @@ class FPN():
                 print("var_in_ckpt: ", key)
 
             restorer = tf.compat.v1.train.Saver(restore_variables)
-            checkpoint_path = os.path.join(pretrain_model_dir, self.base_network_name + '.ckpt')
+            checkpoint_path = os.path.join(pretrained_model_dir, self.base_network_name + '.ckpt')
             print("restore from pretrained_weighs in IMAGE_NET")
 
         return restorer, checkpoint_path
