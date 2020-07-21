@@ -51,16 +51,16 @@ def train():
     total_loss = rpn_total_loss + fastrcnn_total_loss
 
     # add final image summary
-    gtboxes_in_img = show_box_in_tensor.draw_boxes_with_categories(img_batch=img_batch,
-                                                                   boxes=gtboxes_and_label_batch[:, :-1],
-                                                                   labels=gtboxes_and_label_batch[:, -1])
-    if cfgs.ADD_BOX_IN_TENSORBOARD:
-        detections_in_img = show_box_in_tensor.draw_boxes_with_categories_and_scores(img_batch=img_batch,
-                                                                                     boxes=final_bbox,
-                                                                                     labels=final_category,
-                                                                                     scores=final_scores)
-        tf.summary.image('Compare/final_detection', detections_in_img)
-    tf.summary.image('Compare/gtboxes', gtboxes_in_img)
+    # gtboxes_in_img = show_box_in_tensor.draw_boxes_with_categories(img_batch=img_batch,
+    #                                                                boxes=gtboxes_and_label_batch[:, :-1],
+    #                                                                labels=gtboxes_and_label_batch[:, -1])
+    # if cfgs.ADD_BOX_IN_TENSORBOARD:
+    #     detections_in_img = show_box_in_tensor.draw_boxes_with_categories_and_scores(img_batch=img_batch,
+    #                                                                                  boxes=final_bbox,
+    #                                                                                  labels=final_category,
+    #                                                                                  scores=final_scores)
+    #     tf.summary.image('Compare/final_detection', detections_in_img)
+    # tf.summary.image('Compare/gtboxes', gtboxes_in_img)
     #++++++++++++++++++++++++++++++++++++++++++++++++build loss function++++++++++++++++++++++++++++++++++++++++++++++
     global_step = slim.get_or_create_global_step()
     lr = tf.train.piecewise_constant(global_step,
