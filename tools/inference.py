@@ -52,7 +52,7 @@ class ObjectInference():
         # restore pretrain weight
         restorer, restore_ckpt = self.detect_net.get_restore(pretrained_model_dir=self.pretrain_model_dir,
                                                              restore_from_rpn=False,
-                                                             is_pretrain=True)
+                                                             is_pretrained=True)
         # config gpu to growth train
         config = tf.ConfigProto()
         config.gpu_options.allow_growth = True
@@ -66,7 +66,7 @@ class ObjectInference():
 
             if restorer is not None:
                 restorer.restore(sess, save_path=restore_ckpt)
-                print('Successful restore model from {0}'.format(restore_ckpt))
+                print('*'*80 +'\nSuccessful restore model from {0}\n'.format(restore_ckpt) + '*'*80)
 
             # construct image path list
             format_list = ('.jpg', '.png', '.jpeg', '.tif', '.tiff')

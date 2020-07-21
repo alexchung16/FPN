@@ -641,7 +641,7 @@ class FPN():
             }
         return feed_dict
 
-    def get_restore(self, pretrained_model_dir, restore_from_rpn=True, is_pretrain=False):
+    def get_restore(self, pretrained_model_dir, restore_from_rpn=True, is_pretrained=False):
         """
         restore pretrain weight
         :param pretrain_model_dir:
@@ -651,7 +651,7 @@ class FPN():
 
         model_variables = slim.get_model_variables()
         # restore weight from faster rcnn pretrain model
-        if is_pretrain:
+        if is_pretrained:
             # just restore weight of base net(resnet_50, resnet_v1_101) and rpn_net
             if restore_from_rpn:
                 restore_variables= [var for var in model_variables if not var.name.startswith('Fast-RCNN')]
