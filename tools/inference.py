@@ -19,25 +19,40 @@ import tensorflow as tf
 from libs.configs import cfgs
 from libs.box_utils import draw_box_in_img
 from libs.networks.models import FPN
+from utils.tools import makedir, view_bar
 
 
 class ObjectInference():
-    """
-    predict operation
-    """
     def __init__(self, base_network_name, pretrain_model_dir):
         self.base_network_name = base_network_name
         self.pretrain_model_dir = pretrain_model_dir
         self.detect_net = FPN(base_network_name=base_network_name, is_training=False)
+        # self._R_MEAN = 123.68
+        # self._G_MEAN = 116.779
+        # self._B_MEAN = 103.939
 
-    def exucute_detect(self, image_path):
+    def exucute_detect(self, image_path, save_path):
         """
         execute object detect
         :param detect_net:
         :param image_path:
         :return:
         """
+        input_image = tf.placeholder(dtype=tf.uint8, shape=(None, None, 3), name='inputs_images')
 
+        resize_img = self.image_process(input_image)
+        # expend dimension
+        image_batch = tf.expand_dims(input=resize_img, axis=0)  # (1, None, None, 3)
+
+        self.detect_net.raw_input_data = image_batch
+        # img_shape = tf.shape(inputs_img)
+        # load detect network
+        detection_boxes, detection_scores, detection_category = self.detect_net.inference()
+
+        # restore pretrain weight
+        restorer, restore_ckpt = self.detect_net.get_restore(pretrained_model_dir=self.pretrain_model_dir,
+                                                             restore_from_rpn=False,
+                                                             is_pretrain=True)
         # config gpu to growth train
         config = tf.ConfigProto()
         config.gpu_options.allow_growth = True
@@ -46,46 +61,41 @@ class ObjectInference():
             tf.global_variables_initializer(),
             tf.local_variables_initializer()
         )
-
-        with tf.Session() as sess:
+        with tf.Session(config=config) as sess:
             sess.run(init_op)
 
-            # restore pretrain weight
-            restorer, restore_ckpt = self.detect_net.get_restore(pretrain_model_dir=self.pretrain_model_dir,
-                                                                 restore_from_rpn=False,
-                                                                 is_pretrain=True)
-            if not restorer is None:
+            if restorer is not None:
                 restorer.restore(sess, save_path=restore_ckpt)
                 print('Successful restore model from {0}'.format(restore_ckpt))
 
             # construct image path list
             format_list = ('.jpg', '.png', '.jpeg', '.tif', '.tiff')
             if os.path.isfile(image_path):
-                image_list = [image_path]
+                image_name_list = [image_path]
             else:
-                image_list = [os.path.join(image_path, img_name) for img_name in os.listdir(image_path)
+                image_name_list = [img_name for img_name in os.listdir(image_path)
                               if img_name.endswith(format_list) and os.path.isfile(os.path.join(image_path, img_name))]
 
-            assert len(image_list) != 0
-            print("test_dir has no images there. Note that, we only support image format of {0}".format(format_list))
+            assert len(image_name_list) != 0
+            print("test_dir has no imgs there. Note that, we only support img format of {0}".format(format_list))
             #+++++++++++++++++++++++++++++++++++++start detect+++++++++++++++++++++++++++++++++++++++++++++++++++++=++
-            detect_dict= {}
-            for index, img_name in enumerate(image_list):
-                tmp_detect_dict = {}
-                bgr_img = cv.imread(img_name)
-                raw_img = cv.cvtColor(bgr_img, cv.COLOR_BGR2RGB)
-                resized_img = self.image_process(raw_img)
-                # expend dimension
-                image_batch = tf.expand_dims(input=resized_img, axis=0)  # (1, None, None, 3)
+            makedir(save_path)
+            fw = open(os.path.join(save_path, 'detect_bbox.txt'), 'w')
 
-                start_time = time.time()
+            for index, img_name in enumerate(image_name_list):
 
-                feed_dict = self.detect_net.fill_feed_dict(image_feed=image_batch.eval())
-                resized_img, (detected_boxes, detected_scores, detected_categories) = \
-                    sess.run(fetches=[resized_img, self.detect_net.inference],
-                             feed_dict=feed_dict) # convert channel from BGR to RGB (cv is BGR)
-                end_time = time.time()
-                print("{} cost time : {} ".format(img_name, (end_time - start_time)))
+                detect_dict = {}
+                bgr_img = cv.imread(os.path.join(image_path, img_name))
+                rgb_img = cv.cvtColor(bgr_img, cv.COLOR_BGR2RGB) # convert channel from BGR to RGB (cv is BGR)
+
+                start_time = time.perf_counter()
+                # image resize and white process
+                # construct feed_dict
+                feed_dict = {input_image: rgb_img}
+                resized_img, detected_boxes, detected_scores, detected_categories = \
+                    sess.run([resize_img, detection_boxes, detection_scores, detection_category],
+                             feed_dict=feed_dict)
+                end_time = time.perf_counter()
 
                 # select object according to threshold
                 object_indices = detected_scores >= cfgs.SHOW_SCORE_THRSHOLD
@@ -93,31 +103,40 @@ class ObjectInference():
                 object_boxes = detected_boxes[object_indices]
                 object_categories = detected_categories[object_indices]
 
-                final_detections = draw_box_in_img.draw_boxes_with_label_and_scores(img_array=resized_img,
+                final_detections_img = draw_box_in_img.draw_boxes_with_label_and_scores(resized_img,
                                                                                     boxes=object_boxes,
                                                                                     labels=object_categories,
                                                                                     scores=object_scores)
-                final_detections = cv.cvtColor(final_detections, cv.COLOR_RGB2BGR)
-                # final_detections = draw_box_in_img.draw_boxes_with_label_and_scores(np.array(raw_img, dtype=np.float32),
-                #                                                                     boxes=object_boxes,
-                #                                                                     labels=object_categories,
-                #                                                                     scores=object_scores)
+                final_detections_img = cv.cvtColor(final_detections_img, cv.COLOR_RGB2BGR)
+                cv.imwrite(os.path.join(save_path, img_name), final_detections_img)
+                # resize boxes and image according to raw input image
+                raw_h, raw_w = rgb_img.shape[0], rgb_img.shape[1]
+                resized_h, resized_w = resized_img.shape[1], resized_img.shape[2]
+                x_min, y_min, x_max, y_max = object_boxes[:, 0], object_boxes[:, 1], object_boxes[:, 2], \
+                                             object_boxes[:, 3]
+                x_min = x_min * raw_w / resized_w
+                y_min = y_min * raw_h / resized_h
+                x_max = x_max * raw_w / resized_w
+                y_max = y_max * raw_h / resized_h
 
-                # resize boxes and image shape size to raw input image
-                object_boxes = self.bbox_resize(bbox=object_boxes,
-                                                inputs_shape=resized_img.shape[0: 2],
-                                                target_shape=raw_img.shape[0: 2])
+                object_boxes = np.stack([x_min, y_min, x_max, y_max], axis=1)
+                # final_detections= cv.resize(final_detections[:, :, ::-1], (raw_w, raw_h))
 
                 # recover to raw size
-                tmp_detect_dict['score'] = object_scores
-                tmp_detect_dict['boxes'] = object_boxes
-                tmp_detect_dict['categories'] = object_categories
-                # convert from RGB to BGR
-                tmp_detect_dict['detections'] = final_detections
+                detect_dict['score'] = object_scores
+                detect_dict['boxes'] = object_boxes
+                detect_dict['categories'] = object_categories
+                # convert from RGB to BG
+                fw.write(f'\n{img_name}')
+                for score, boxes, categories in zip(object_scores, object_boxes, object_categories):
+                    fw.write('\n\tscore:' + str(score))
+                    fw.write('\tbboxes:' + str(boxes))
+                    fw.write('\tcategories:' + str(categories))
 
-                detect_dict[img_name] = tmp_detect_dict
+                view_bar('{} image cost {} second'.format(img_name, (end_time - start_time)), index + 1,
+                               len(image_name_list))
 
-                return detect_dict
+            fw.close()
 
     def image_process(self, img):
         """
@@ -170,37 +189,17 @@ class ObjectInference():
                        false_fn=lambda: length_limitation)
 
     def bbox_resize(self, bbox, inputs_shape, target_shape):
-        """
-        resize bbox
-        :param bbox: [x_min, y_min, x_max, y_max]
-        :param inputs_shape: [src_h, src_w]
-        :param target_shape: [dst_h, dst_w]
-        :return:
-        """
-        x_min, y_min, x_max, y_max = bbox[:, 0], bbox[:, 1], bbox[:, 2], bbox[:, 3]
-
-        x_min = x_min * target_shape[1] / inputs_shape[1]
-        y_min = y_min * target_shape[0] / inputs_shape[0]
-        x_max = x_max * target_shape[1] / inputs_shape[1]
-        y_max = y_max * target_shape[0] / inputs_shape[0]
-
-        object_boxes = np.stack([x_min, y_min, x_max, y_max], axis=1)
-
-        return object_boxes
+        pass
 
 
 if __name__ == "__main__":
     base_network_name = 'resnet_v1_101'
-    image_dir = '/home/alex/python_code/eval_test/demo_image_2'
-    image_path = os.path.join(image_dir,'004640.jpg')
-    pretrain_model_dir = '/home/alex/Documents/pretraing_model/fpn'
+    # pretrain_model_dir = cfgs.MODEL_CKPT
+    pretrained_model_dir = '/home/alex/Documents/pretrain_model/fpn/fpn'
+
     inference = ObjectInference(base_network_name=base_network_name,
-                                pretrain_model_dir=pretrain_model_dir)
+                                pretrain_model_dir=pretrained_model_dir)
 
-    img_detections = inference.exucute_detect(image_dir)
+    inference.exucute_detect(image_path='./demos', save_path=cfgs.INFERENCE_SAVE_PATH)
 
-    for img_name, detect_info in img_detections.items():
-        print(img_name)
-        cv.imshow('object_name', detect_info['detections'])
-        print(detect_info['boxes'])
-        cv.waitKey()
+    # for img_name, detect_info in img_detections.items():
