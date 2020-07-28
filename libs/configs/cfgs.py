@@ -45,7 +45,7 @@ else:
     raise NotImplementedError
 
 PRETRAINED_CKPT = ROOT_PATH + '/data/pretrained_weights'
-MODEL_CKPT = os.path.join(ROOT_PATH, 'outputs/model_weights')
+TRAINED_CKPT = os.path.join(ROOT_PATH, 'outputs/trained_weights')
 EVALUATE_DIR = ROOT_PATH + '/outputs/evaluate_result'
 # PRETRAINED_CKPT = ROOT_PATH + '/data/pretrained_weights/' + weights_name + '.ckpt'
 # TRAINED_CKPT = os.path.join(ROOT_PATH, 'output/trained_weights')
