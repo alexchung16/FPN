@@ -90,6 +90,49 @@ def smooth_l1_loss_rcnn(bbox_pred, bbox_targets, label, num_classes, sigma=1.0):
     return bbox_loss
 
 def sum_ohem_loss(cls_score, label, bbox_pred, bbox_targets,
-                  nr_ohem_sampling, nr_classes, sigma=1.0):
+                  num_classes, num_ohem_samples=256, sigma=1.0):
+    '''
+    :param cls_score: [-1, cls_num+1]
+    :param label: [-1]
+    :param bbox_pred: [-1, 4*(cls_num+1)]
+    :param bbox_targets: [-1, 4*(cls_num+1)]
+    :param num_ohem_samples: 256 by default
+    :param num_classes: cls_num+1
+    :param sigma:
+    :return:
+    '''
 
-    raise NotImplementedError('not implement Now. YJR will implemetn in the future')
+    cls_loss = tf.nn.sparse_softmax_cross_entropy_with_logits(logits=cls_score, labels=label)  # [-1, ]
+    # cls_loss = tf.Print(cls_loss, [tf.shape(cls_loss)], summarize=10, message='CLS losss shape ****')
+
+    outside_mask = tf.stop_gradient(tf.to_float(tf.greater(label, 0)))
+    bbox_pred = tf.reshape(bbox_pred, [-1, num_classes, 4])
+    bbox_targets = tf.reshape(bbox_targets, [-1, num_classes, 4])
+
+    value = _smooth_l1_loss_base(bbox_pred,
+                                 bbox_targets,
+                                 sigma=sigma)
+    value = tf.reduce_sum(value, 2)
+    value = tf.reshape(value, [-1, num_classes])
+
+    inside_mask = tf.one_hot(tf.reshape(label, [-1, 1]),
+                             depth=num_classes, axis=1)
+
+    inside_mask = tf.stop_gradient(
+        tf.to_float(tf.reshape(inside_mask, [-1, num_classes])))
+    loc_loss = tf.reduce_sum(value * inside_mask, 1)*outside_mask
+    # loc_loss = tf.Print(loc_loss, [tf.shape(loc_loss)], summarize=10, message='loc_loss shape***')
+
+    sum_loss = cls_loss + loc_loss
+
+    num_ohem_samples = tf.stop_gradient(tf.minimum(num_ohem_samples, tf.shape(sum_loss)[0]))
+    _, top_k_indices = tf.nn.top_k(sum_loss, k=num_ohem_samples)
+
+    cls_loss_ohem = tf.gather(cls_loss, top_k_indices)
+    cls_loss_ohem = tf.reduce_mean(cls_loss_ohem)
+
+    loc_loss_ohem = tf.gather(loc_loss, top_k_indices)
+    normalizer = tf.to_float(num_ohem_samples)
+    loc_loss_ohem = tf.reduce_sum(loc_loss_ohem) / normalizer
+
+    return cls_loss_ohem, loc_loss_ohem
