@@ -20,6 +20,7 @@ from libs.configs import cfgs
 from libs.networks import models
 from data.pascal.read_tfrecord import dataset_tfrecord
 from libs.box_utils import show_box_in_tensor
+from utils.tools import makedir
 
 
 def train():
@@ -51,16 +52,7 @@ def train():
     total_loss = rpn_total_loss + fastrcnn_total_loss
 
     # add final image summary
-    gtboxes_in_img = show_box_in_tensor.draw_boxes_with_categories(img_batch=img_batch,
-                                                                   boxes=gtboxes_and_label_tensor[:, :-1],
-                                                                   labels=gtboxes_and_label_tensor[:, -1])
-    if cfgs.ADD_BOX_IN_TENSORBOARD:
-        detections_in_img = show_box_in_tensor.draw_boxes_with_categories_and_scores(img_batch=img_batch,
-                                                                                     boxes=final_bbox,
-                                                                                     labels=final_category,
-                                                                                     scores=final_scores)
-        tf.summary.image('Compare/final_detection', detections_in_img)
-    tf.summary.image('Compare/gtboxes', gtboxes_in_img)
+
     #++++++++++++++++++++++++++++++++++++++++++++++++build loss function++++++++++++++++++++++++++++++++++++++++++++++
     global_step = slim.get_or_create_global_step()
     lr = tf.train.piecewise_constant(global_step,
@@ -88,7 +80,7 @@ def train():
                                          global_step=global_step)
     summary_op = tf.summary.merge_all()
 
-    restorer, restore_ckpt = fpn.get_restore(pretrained_model_dir=cfgs.PRETRAINED_CKPT)
+    restorer, restore_ckpt = fpn.get_restorer()
 
     saver = tf.train.Saver(max_to_keep=30)
 
@@ -106,10 +98,9 @@ def train():
         if not restorer is None:
             restorer.restore(sess, save_path=restore_ckpt)
             print('*' * 80 + '\nSuccessful restore model from {0}\n'.format(restore_ckpt) + '*' * 80)
-
-        model_variables = slim.get_model_variables()
-        for var in model_variables:
-            print(var.name, var.shape)
+        # model_variables = slim.get_model_variables()
+        # for var in model_variables:
+        #     print(var.name, var.shape)
         # build summary write
         summary_writer = tf.summary.FileWriter(cfgs.SUMMARY_PATH, graph=sess.graph)
 
@@ -140,7 +131,7 @@ def train():
                                     feed_dict=feed_dict)
 
                             end_time = time.time()
-                            print(""" {}: step{}\t\timage_name:{} |\t rpn_loc_loss:{} |\t rpn_cla_loss:{} |\t rpn_total_loss:{} |
+                            print(""" {}: step {}\t\timage_name:{} |\t rpn_loc_loss:{} |\t rpn_cla_loss:{} |\t rpn_total_loss:{} |
                                       fast_rcnn_loc_loss:{} |\t fast_rcnn_cla_loss:{} |\t fast_rcnn_total_loss:{} |
                                       total_loss:{} |\t per_cost_time:{}s""" \
                                   .format(training_time, globalStep, str(img_name[0]), rpnLocLoss, rpnClsLoss,
@@ -153,7 +144,9 @@ def train():
                                 summary_writer.flush()
 
                     if (step > 0 and step % cfgs.SAVE_WEIGHTS_INTE == 0) or (step == cfgs.MAX_ITERATION - 1):
-                        save_ckpt = os.path.join(cfgs.MODEL_CKPT, 'voc_' + str(globalStep) + 'model.ckpt')
+                        save_dir = os.path.join(cfgs.TRAINED_CKPT, cfgs.VERSION)
+                        makedir(save_dir)
+                        save_ckpt = os.path.join(save_dir, 'voc_' + str(globalStep) + '_model.ckpt')
                         saver.save(sess, save_ckpt)
                         print(' weights had been saved')
 
