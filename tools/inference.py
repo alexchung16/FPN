@@ -44,7 +44,7 @@ class ObjectInference():
         # expend dimension
         image_batch = tf.expand_dims(input=resize_img, axis=0)  # (1, None, None, 3)
 
-        self.detect_net.raw_input_data = image_batch
+        self.detect_net.images_batch = image_batch
         # img_shape = tf.shape(inputs_img)
         # load detect network
         detection_boxes, detection_scores, detection_category = self.detect_net.inference()
