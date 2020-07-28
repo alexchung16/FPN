@@ -17,7 +17,7 @@ import tensorflow as tf
 
 # ------------------------------------------------
 # VERSION = 'FPN_Res101_20181201'
-VERSION = 'FPN_Res101_20191230'
+VERSION = 'FPN_Res101_20200728'
 NET_NAME = 'resnet_v1_101'
 ADD_BOX_IN_TENSORBOARD = True
 
