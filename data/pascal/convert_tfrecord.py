@@ -117,9 +117,9 @@ def read_xml_gtbox_and_label(xml_path):
 
     gtbox_label = np.array(box_list, dtype=np.int32)  # [x1, y1. x2, y2, label]
 
-    xmin, ymin, xmax, ymax, label = gtbox_label[:, 0], gtbox_label[:, 1], gtbox_label[:, 2], gtbox_label[:, 3], \
-                                    gtbox_label[:, 4]
-    gtbox_label = np.transpose(np.stack([ymin, xmin, ymax, xmax, label], axis=0))  # [ymin, xmin, ymax, xmax, label]
+    # xmin, ymin, xmax, ymax, label = gtbox_label[:, 0], gtbox_label[:, 1], gtbox_label[:, 2], gtbox_label[:, 3], \
+    #                                 gtbox_label[:, 4]
+    # gtbox_label = np.transpose(np.stack([ymin, xmin, ymax, xmax, label], axis=0))  # [ymin, xmin, ymax, xmax, label]
 
     return img_height, img_width, gtbox_label
 
