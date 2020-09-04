@@ -7,53 +7,39 @@
 
 import os
 import glob
+import random
 import numpy as np
 import tensorflow  as tf
 import xml.etree.cElementTree as ET
 import cv2 as cv
 
 from utils.tools import makedir, view_bar
+from libs.configs import cfgs
 
-original_dataset_dir = '/media/alex/AC6A2BDB6A2BA0D6/alex_dataset/Pascal_VOC_2012/VOCtrainval/VOCdevkit/VOC2012'
+'''How to organize your dataset folder:
+  VOCROOT/
+       |->VOC2007/
+       |    |->Annotations/
+       |    |->ImageSets/
+       |    |->...
+       |->VOC2012/
+       |    |->Annotations/
+       |    |->ImageSets/
+       |    |->...
+'''
 
-tfrecord_dir = '/media/alex/AC6A2BDB6A2BA0D6/alex_dataset/pascal_tfrecord'
-# tfrecord_dir = os.path.join(original_dataset_dir, 'tfrecords')
-
-
-NAME_LABEL_MAP = {
-        'back_ground': 0,
-        'aeroplane': 1,
-        'bicycle': 2,
-        'bird': 3,
-        'boat': 4,
-        'bottle': 5,
-        'bus': 6,
-        'car': 7,
-        'cat': 8,
-        'chair': 9,
-        'cow': 10,
-        'diningtable': 11,
-        'dog': 12,
-        'horse': 13,
-        'motorbike': 14,
-        'person': 15,
-        'pottedplant': 16,
-        'sheep': 17,
-        'sofa': 18,
-        'train': 19,
-        'tvmonitor': 20
-    }
-
+original_dataset_dir = '/media/alex/AC6A2BDB6A2BA0D6/alex_dataset/pascal_voc/train'
+tfrecord_dir = '/media/alex/AC6A2BDB6A2BA0D6/alex_dataset/pascal_tfrecord/train'
 
 tf.app.flags.DEFINE_string('dataset_dir', original_dataset_dir, 'Voc dir')
 tf.app.flags.DEFINE_string('xml_dir', 'Annotations', 'xml dir')
 tf.app.flags.DEFINE_string('image_dir', 'JPEGImages', 'image dir')
 tf.app.flags.DEFINE_string('save_name', 'train', 'save name')
+tf.app.flags.DEFINE_string('year', '2007,2012', 'Desired challenge year.')
 tf.app.flags.DEFINE_string('save_dir', tfrecord_dir, 'save name')
-tf.app.flags.DEFINE_string('img_format', '.jpg', 'format of image')
+tf.app.flags.DEFINE_string('img_format', 'jpg', 'format of image')
 tf.app.flags.DEFINE_string('dataset', 'car', 'dataset')
 FLAGS = tf.app.flags.FLAGS
-
 
 try:
     if os.path.exists(original_dataset_dir) is False:
@@ -62,6 +48,7 @@ except FileNotFoundError as e:
     print(e)
 finally:
     makedir(tfrecord_dir)
+
 
 def _int64_feature(value):
     return tf.train.Feature(int64_list=tf.train.Int64List(value=[value]))
@@ -96,7 +83,7 @@ def read_xml_gtbox_and_label(xml_path):
             for child_item in child_of_root:
                 if child_item.tag == 'name':
                     # label = NAME_LABEL_MAP[child_item.text]
-                    label=NAME_LABEL_MAP[child_item.text]
+                    label = cfgs.PASCAL_NAME_LABEL_MAP[child_item.text]
                 if child_item.tag == 'bndbox':
                     tmp_box = []
                     xmin, ymin, xmax, ymax = None, None, None, None
@@ -124,7 +111,7 @@ def read_xml_gtbox_and_label(xml_path):
     return img_height, img_width, gtbox_label
 
 
-def convert_pascal_to_tfrecord(img_path, xml_path, save_path, record_capacity=2000):
+def convert_pascal_to_tfrecord(dataset_path, save_path, record_capacity=2000, shuffling=False):
     """
     convert pascal dataset to rfrecord
     :param img_path:
@@ -134,9 +121,27 @@ def convert_pascal_to_tfrecord(img_path, xml_path, save_path, record_capacity=20
     :return:
     """
     # record_file = os.path.join(FLAGS.save_dir, FLAGS.save_name+'.tfrecord')
+    years = [s.strip() for s in FLAGS.year.split(',')]
+    # get image and xml list
+    img_name_list = []
+    img_xml_list = []
 
-    img_xml_list = [os.path.basename(xml_file) for xml_file in glob.glob(os.path.join(xml_path, '*.xml'))]
-    img_name_list = [xml.split('.')[0] + FLAGS.img_format for xml in img_xml_list]
+    for year in years:
+        img_path = os.path.join(dataset_path, 'VOC' + year, FLAGS.image_dir)
+        xml_path = os.path.join(dataset_path, 'VOC' + year, FLAGS.xml_dir)
+        xml_list = [xml_file for xml_file in glob.glob(os.path.join(xml_path, '*.xml'))]
+        img_list = [os.path.join(img_path, os.path.basename(xml).replace('xml', FLAGS.img_format)) for xml in xml_list]
+        img_name_list.extend(img_list)
+        img_xml_list.extend(xml_list)
+
+    if shuffling:
+        shuffled_index = list(range(len(img_name_list)))
+        random.seed(0)
+        random.shuffle(shuffled_index)
+        img_name_shuffle = [img_name_list[index] for index in shuffled_index]
+        img_xml_shuffle = [img_xml_list[index] for index in shuffled_index]
+        img_name_list = img_name_shuffle
+        img_xml_list = img_xml_shuffle
 
     remainder_num = len(img_name_list) % record_capacity
     if remainder_num == 0:
@@ -156,22 +161,21 @@ def convert_pascal_to_tfrecord(img_path, xml_path, save_path, record_capacity=20
             sub_xml_list = img_xml_list[(index * record_capacity): (index * record_capacity + remainder_num)]
 
         try:
-            for img_name, img_xml in zip(sub_img_list, sub_xml_list):
-                img_file = os.path.join(img_path, img_name)
-                xml_file = os.path.join(xml_path, img_xml)
-
+            for img_file, xml_file in zip(sub_img_list, sub_xml_list):
                 img_height, img_width, gtbox_label = read_xml_gtbox_and_label(xml_file)
                 # note image channel format of opencv if rgb
                 bgr_image = cv.imread(img_file)
                 # BGR TO RGB
                 rgb_image = cv.cvtColor(bgr_image, cv.COLOR_BGR2RGB)
 
-                image_record = serialize_example(image=rgb_image, img_height=img_height, img_width=img_width, img_depth=3,
-                                                 filename=img_name, gtbox_label=gtbox_label)
+                image_record = serialize_example(image=rgb_image, img_height=img_height, img_width=img_width,
+                                                 img_depth=3,
+                                                 filename=img_file, gtbox_label=gtbox_label)
                 write.write(record=image_record)
 
                 num_samples += 1
                 view_bar(message='\nConversion progress', num=num_samples, total=len(img_name_list))
+
         except Exception as e:
             print(e)
             continue
@@ -193,7 +197,7 @@ def serialize_example(image, img_height, img_width, img_depth, filename, gtbox_l
         'image': _bytes_feature(image.tostring()),
         'height': _int64_feature(img_height),
         'width': _int64_feature(img_width),
-        'depth':_int64_feature(img_depth),
+        'depth': _int64_feature(img_depth),
         'filename': _bytes_feature(filename.encode()),
         'gtboxes_and_label': _bytes_feature(gtbox_label.tostring()),
         'num_objects': _int64_feature(gtbox_label.shape[0])
@@ -207,7 +211,7 @@ if __name__ == "__main__":
     image_path = os.path.join(FLAGS.dataset_dir, FLAGS.image_dir)
     xml_path = os.path.join(FLAGS.dataset_dir, FLAGS.xml_dir)
 
-    convert_pascal_to_tfrecord(img_path=image_path, xml_path=xml_path, save_path=FLAGS.save_dir, record_capacity=4000)
+    convert_pascal_to_tfrecord(dataset_path=FLAGS.dataset_dir, save_path=FLAGS.save_dir, record_capacity=4000)
 
 
 

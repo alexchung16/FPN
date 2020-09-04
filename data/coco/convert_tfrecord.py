@@ -21,7 +21,7 @@ import tensorflow  as tf
 from utils.tools import view_bar, makedir
 
 coco_dataset_dir = '/media/alex/AC6A2BDB6A2BA0D6/alex_dataset/sub_coco'
-coco_tfrecord_dir = '/media/alex/AC6A2BDB6A2BA0D6/alex_dataset/coco_tfrecord'
+coco_tfrecord_dir = '/media/alex/AC6A2BDB6A2BA0D6/alex_dataset/coco_tfrecord/train'
 
 tf.app.flags.DEFINE_string('dataset_dir', coco_dataset_dir, 'Voc dir')
 tf.app.flags.DEFINE_string('anns_dir', 'Annotations', 'annotation dir')

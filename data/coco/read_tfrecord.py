@@ -12,9 +12,11 @@ import tensorflow as tf
 import matplotlib.pyplot as plt
 from tensorflow.python_io import tf_record_iterator
 
+from libs.box_utils import show_box_in_tensor
+
 
 # origin_dataset_dir = '/media/alex/AC6A2BDB6A2BA0D6/alex_dataset/pascal_split/val'
-tfrecord_dir = '/media/alex/AC6A2BDB6A2BA0D6/alex_dataset/coco_tfrecord'
+tfrecord_dir = '/media/alex/AC6A2BDB6A2BA0D6/alex_dataset/coco_tfrecord/train'
 
 _R_MEAN = 123.68
 _G_MEAN = 116.78
@@ -229,7 +231,7 @@ def reader_tfrecord(record_file, shortside_len, length_limitation, batch_size=1,
                                             dynamic_pad=True
                                             )
     # dataset = tf.data.Dataset.shuffle(buffer_size=batch_size*4)
-    return filename, image, gtboxes_and_label, num_objects
+    return filename, image,  gtboxes_and_label, num_objects
 
 
 def get_num_samples(record_dir):
@@ -239,12 +241,17 @@ def get_num_samples(record_dir):
     :return:
     """
     # check record file format
-    record_list = glob.glob(os.path.join(record_dir, '*.record'))
-
+    # record_list = glob.glob(os.path.join(self.record_dir, '*.record'))
+    file_pattern = os.path.join(record_dir, '*.record')
+    input_files = tf.io.gfile.glob(file_pattern)
     num_samples = 0
-    for record_file in record_list:
-        for record in tf_record_iterator(record_file):
-            num_samples += 1
+    print("counting number of sample, please waiting...")
+    # convert to dynamic mode
+    tf.enable_eager_execution()
+    for _ in tf.data.TFRecordDataset(input_files):
+        num_samples += 1
+    # recover to static mode
+    tf.disable_eager_execution()
     return num_samples
 
 
@@ -259,6 +266,11 @@ if __name__ == "__main__":
                                                                        shortside_len=IMG_SHORT_SIDE_LEN,
                                                                        length_limitation=IMG_MAX_LENGTH,
                                                                        is_training=True)
+    gtboxes_and_label_tensor = tf.reshape(gtboxes_and_label_batch, [-1, 5])
+
+    gtboxes_in_img = show_box_in_tensor.draw_boxes_with_categories(img_batch=image_batch,
+                                                                   boxes=gtboxes_and_label_tensor[:, :-1],
+                                                                   labels=gtboxes_and_label_tensor[:, -1])
     init_op = tf.group(
         tf.global_variables_initializer(),
         tf.local_variables_initializer()
@@ -272,9 +284,10 @@ if __name__ == "__main__":
         threads = tf.train.start_queue_runners(coord=coord)
         try:
             if not coord.should_stop():
-                filename, image, gtboxes_and_label = sess.run([filename_batch, image_batch, gtboxes_and_label_batch])
+                filename, image, gtboxes_and_label, gtbox_img = sess.run([filename_batch, image_batch,  gtboxes_and_label_batch,
+                                                                          gtboxes_in_img])
 
-                plt.imshow(image[0])
+                plt.imshow(gtbox_img[0])
                 print(filename[0])
                 print(gtboxes_and_label[0])
                 plt.show()
