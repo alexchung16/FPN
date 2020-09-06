@@ -30,7 +30,7 @@ SHOW_TRAIN_INFO_INTE = 10
 SMRY_ITER = 100
 SAVE_WEIGHTS_INTE = 10000
 
-TFRECORD_DIR = '/media/alex/AC6A2BDB6A2BA0D6/alex_dataset/pascal_tfrecord'
+TFRECORD_DIR = '/media/alex/AC6A2BDB6A2BA0D6/alex_dataset/pascal_tfrecord/train'
 SUMMARY_PATH = ROOT_PATH + '/outputs/summary'
 INFERENCE_SAVE_PATH = ROOT_PATH + '/outputs/inference_results'
 TEST_SAVE_PATH = ROOT_PATH + '/outputs/test_results'
