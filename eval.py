@@ -37,7 +37,7 @@ class Evaluate():
         self.detect_net = FPN(base_network_name=base_network_name, is_training=False)
 
 
-    def execute_evaluate(self, img_dir, annotation_dir, eval_num):
+    def execute_evaluate(self, img_dir, annotation_dir, eval_num=None):
         """
         execute evaluate operation
         :param img_dir: evaluate image dir
@@ -50,10 +50,14 @@ class Evaluate():
         img_name_list = [img_name for img_name in os.listdir(img_dir) if img_name.endswith(format_list)]
         assert len(img_name_list) != 0, \
             "test_dir has no images there. Note that, we only support image format of {0}".format(format_list)
-        # select specialize number image
-        eval_img_list = img_name_list[: eval_num]
 
-        self.exucute_detect(img_dir=img_dir, img_name_list=img_name_list)
+        if eval_num is None:
+            eval_img_list = img_name_list
+        else:
+            # select specialize number image
+            eval_img_list = img_name_list[: eval_num]
+
+        self.exucute_detect(img_dir=img_dir, img_name_list=eval_img_list)
 
         # load all boxes
         with open(os.path.join(self.object_bbox_save_path, 'detections.pkl'), 'rb') as f:
@@ -74,6 +78,8 @@ class Evaluate():
         :return:
         """
 
+        detection_boxes, detection_scores, detection_category = self.detect_net.inference()
+
         # config gpu to growth train
         config = tf.ConfigProto()
         config.gpu_options.allow_growth = True
@@ -83,14 +89,19 @@ class Evaluate():
             tf.local_variables_initializer()
         )
 
-        with tf.Session() as sess:
+        with tf.Session(config=config) as sess:
             sess.run(init_op)
 
-            # restore pretrain weight
-            restorer, restore_ckpt = self.detect_net.get_restorer()
-            if not restorer is None:
+            if self.pretrain_model_dir is not None:
+                # restore pretrain weight
+                restorer = tf.train.Saver()
+                restore_ckpt = tf.train.latest_checkpoint(pretrain_model_dir)
+                restorer.restore(sess, restore_ckpt)
+
+            else:
+                restorer, restore_ckpt = self.detect_net.get_restorer()
                 restorer.restore(sess, save_path=restore_ckpt)
-                print('Successful restore model from {0}'.format(restore_ckpt))
+            print('Successful restore model from {0}'.format(restore_ckpt))
 
             # +++++++++++++++++++++++++++++++++++++start detect+++++++++++++++++++++++++++++++++++++++++++++++++++++=++
             all_boxes = []
@@ -105,9 +116,8 @@ class Evaluate():
                 start_time = time.time()
 
                 feed_dict = self.detect_net.fill_feed_dict(image_feed=image_batch.eval())
-                resized_img, (detected_boxes, detected_scores, detected_categories) = \
-                    sess.run(fetches=[resized_img, self.detect_net.inference],
-                             feed_dict=feed_dict)  # convert channel from BGR to RGB (cv is BGR)
+                resized_img, detected_boxes, detected_scores, detected_categories = \
+                    sess.run([resized_img, detection_boxes, detection_scores, detection_category], feed_dict=feed_dict)  # convert channel from BGR to RGB (cv is BGR)
                 end_time = time.time()
                 print("{} cost time : {} ".format(img_name, (end_time - start_time)))
 
@@ -226,20 +236,19 @@ def makedir(path):
 
 if __name__ == "__main__":
     base_network_name = 'resnet_v1_101'
-    dataset_dir = '/home/alex/Documents/datasets/Pascal_VOC_2012/eval_test'
+    dataset_dir = '/media/alex/AC6A2BDB6A2BA0D6/alex_dataset/pascal_voc/test/VOC2007'
     image_dir = os.path.join(dataset_dir, 'JPEGImages')
     annotation_dir = os.path.join(dataset_dir, 'Annotations')
-    save_dir = os.path.join(os.getcwd(), 'datas')
 
-    pretrain_model_dir = '/home/alex/Documents/pretraing_model/fpn'
+    pretrain_model_dir = None
     evaluate = Evaluate(base_network_name=base_network_name,
                         pretrain_model_dir=pretrain_model_dir,
-                        save_path=save_dir,
+                        save_path=cfgs.EVALUATE_DIR,
                         draw_img=False)
 
     mAP = evaluate.execute_evaluate(img_dir=image_dir,
-                              annotation_dir=annotation_dir,
-                              eval_num=10)
+                                    annotation_dir=annotation_dir,
+                                    eval_num=10)
 
     print(mAP)
 
