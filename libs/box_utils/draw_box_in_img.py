@@ -136,10 +136,10 @@ def draw_boxes_with_label_and_scores(img_array, boxes, labels, scores):
             if a_label == ONLY_DRAW_BOXES:  # -1
                 continue
             elif a_label == ONLY_DRAW_BOXES_WITH_SCORES:  # -2
-                 only_draw_scores(draw_obj, box, a_score, color='White')
+                 only_draw_scores(draw_obj, box, a_score, color=STANDARD_COLORS[a_label])
                  continue
             else:
-                draw_label_with_scores(draw_obj, box, a_label, a_score, color='White')
+                draw_label_with_scores(draw_obj, box, a_label, a_score, color=STANDARD_COLORS[a_label])
 
     out_img_obj = Image.blend(raw_img_obj, img_obj, alpha=0.6)
 

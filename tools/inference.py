@@ -50,9 +50,7 @@ class ObjectInference():
         detection_boxes, detection_scores, detection_category = self.detect_net.inference()
 
         # restore pretrain weight
-        restorer, restore_ckpt = self.detect_net.get_restore(pretrained_model_dir=self.pretrain_model_dir,
-                                                             restore_from_rpn=False,
-                                                             is_pretrained=True)
+        restorer, restore_ckpt = self.detect_net.get_restorer()
         # config gpu to growth train
         config = tf.ConfigProto()
         config.gpu_options.allow_growth = True
