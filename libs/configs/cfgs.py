@@ -73,8 +73,8 @@ GRADIENT_CLIPPING_BY_NORM = None   # 10.0  if None, will not clip
 EPSILON = 1e-5
 MOMENTUM = 0.9
 LR = 0.001  # 0.001  # 0.0003
-DECAY_STEP = [60000, 80000]  # 50000, 70000
-MAX_ITERATION = 140000
+DECAY_STEP = [80000, 120000]  # 50000, 70000
+MAX_ITERATION = 180000
 
 # -------------------------------------------- Data_preprocess_config
 DATASET_NAME = 'pascal'  # 'ship', 'spacenet', 'pascal', 'coco'
